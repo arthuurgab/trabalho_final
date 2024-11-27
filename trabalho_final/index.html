@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buscar e Salvar Personagem</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="text-center">Buscar e Salvar Personagem no Banco</h1>
+    <form id="characterForm" class="mb-4">
+        <div class="form-row">
+            <div class="col">
+                <label for="name">Nome do Personagem:</label>
+                <input type="text" id="name" name="name" class="form-control" placeholder="Ex: Luke Skywalker">
+            </div>
+            <div class="col">
+                <label for="gender">Planeta:</label>
+                <input type="text" id="homeworld" name="homeworld" class="form-control" placeholder="Ex: https://swapi.dev/api/planets/1/">
+            </div>
+        </div>
+        <button type="submit" class="btn btn-primary mt-3">Buscar e Salvar</button>
+    </form>
+    <div id="result"></div>
+    <h2 class="text-center mt-5">Personagens no Banco de Dados</h2>
+    <table class="table table-bordered table-striped mt-3">
+        <thead class="thead-dark">
+            <tr>
+                <th>ID</th>
+                <th>Nome</th>
+                <th>Gênero</th>
+                <th>Altura</th>
+                <th>Homeworld</th>
+                <th>Ação 1</th>
+                <th>Ação 2</th>
+            </tr>
+        </thead>
+        <tbody id="charactersTable">
+ 
+        </tbody>
+    </table>
+    <div class="modal fade" id="editModal" tabindex="-1" aria-labelledby="editModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+            <h5 class="modal-title" id="editModalLabel">Editar Personagem</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+            <form id="editForm">
+                <input type="hidden" id="editId">
+                <div class="mb-3">
+                <label for="editName" class="form-label">Nome</label>
+                <input type="text" class="form-control" id="editName" required>
+                </div>
+                <div class="mb-3">
+                <label for="editGender" class="form-label">Gênero</label>
+                <input type="text" class="form-control" id="editGender" required>
+                </div>
+                <div class="mb-3">
+                <label for="editHeight" class="form-label">Altura</label>
+                <input type="text" class="form-control" id="editHeight" required>
+                </div>
+                <div class="mb-3">
+                <label for="editHomeworld" class="form-label">Homeworld</label>
+                <input type="text" class="form-control" id="editHomeworld" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Salvar</button>
+            </form>
+            </div>
+        </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    document.getElementById('characterForm').addEventListener('submit', function (event) {
+        event.preventDefault(); 
+
+        const name = document.getElementById('name').value;
+        const homeworld = document.getElementById('homeworld').value;
+
+        fetch('php/chama_personagem.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ name, homeworld })
+        })
+        .then(response => response.text())
+        .then(data => {
+            document.getElementById('result').innerHTML = `<p>${data}</p>`;
+            loadCharacters(); 
+        })
+        .catch(error => {
+            console.error('Erro:', error);
+            document.getElementById('result').innerHTML = `<p>Erro ao processar a requisição: ${error}</p>`;
+        });
+    });
+
+    function loadCharacters() {
+        fetch('php/listar_personagem.php')
+            .then(response => response.json())
+            .then(data => {
+                const tableBody = document.getElementById('charactersTable');
+                tableBody.innerHTML = ''; 
+                data.forEach(character => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${character.id}</td>
+                        <td>${character.name}</td>
+                        <td>${character.gender}</td>
+                        <td>${character.height}</td>
+                        <td>${character.homeworld}</td>
+                        <td>
+                            <button type="button" class="btn btn-warning" 
+                                    onclick="openEditModal(${character.id}, '${character.name}', '${character.gender}', '${character.height}', '${character.homeworld}')">
+                                Editar
+                            </button>
+                        </td>
+                        <td>
+                            <button type="button" class="btn btn-danger" onclick="deleted(${character.id})">
+                                Excluir
+                            </button>
+                        </td>
+                        `;
+                    tableBody.appendChild(row);
+                });
+            })
+            .catch(error => console.error('Erro ao carregar personagens:', error));
+    }
+    function openEditModal(id, name, gender, height, homeworld) {
+        document.getElementById('editId').value = id;
+        document.getElementById('editName').value = name;
+        document.getElementById('editGender').value = gender;
+        document.getElementById('editHeight').value = height;
+        document.getElementById('editHomeworld').value = homeworld;
+
+        const modal = new bootstrap.Modal(document.getElementById('editModal'));
+        modal.show();
+    }
+
+    document.getElementById('editForm').addEventListener('submit', function (event) {
+        event.preventDefault();
+
+        const id = document.getElementById('editId').value;
+        const name = document.getElementById('editName').value;
+        const gender = document.getElementById('editGender').value;
+        const height = document.getElementById('editHeight').value;
+        const homeworld = document.getElementById('editHomeworld').value;
+
+        fetch('php/editar_personagem.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ id, name, gender, height, homeworld })
+        })
+            .then(response => response.text())
+            .then(data => {
+                alert(data);
+                const modal = bootstrap.Modal.getInstance(document.getElementById('editModal'));
+                modal.hide();
+                loadCharacters();
+            })
+            .catch(error => console.error('Erro ao editar personagem:', error));
+    });
+    window.onload = loadCharacters;
+
+    function deleted(id){
+        if (confirm('Tem certeza que deseja excluir este personagem?')) {
+            fetch('php/deletar_personagem.php', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ id })
+            })
+                .then(response => response.text())
+                .then(data => {
+                    alert(data); 
+                    loadCharacters(); 
+                })
+                .catch(error => console.error('Erro ao excluir personagem:', error));
+        }
+    }
+</script>
+</body>
+</html>
